@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:18.1-alpine3.22
+    container_name: url_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - url_shortner_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  url_shortner_postgres_data:
