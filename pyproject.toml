@@ -9,6 +9,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "fastapi[standard]>=0.127.0",
     "loguru>=0.7.3",
+    "pytest>=9.0.2",
     "python-dotenv>=1.2.1",
     "sqlalchemy>=2.0.45",
 ]
