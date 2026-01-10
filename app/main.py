@@ -5,9 +5,26 @@ from app.exception import AppException
 from .routers import urls, users
 from dotenv import load_dotenv
 
+import os
+
 load_dotenv()
 
 app = FastAPI()
+
+
+def check_env_var(env):
+    env_val = os.getenv(env)
+    if not env_val:
+        raise RuntimeError(f"{env} environment variable is missing")
+
+    if env == "JWT_ACCESS_SECRET" or env == "JWT_REFRESH_SECRET":
+        if len(env_val) < 64:
+            raise RuntimeError(f"{env} too short")
+
+
+check_env_var("JWT_ACCESS_SECRET")
+check_env_var("JWT_REFRESH_SECRET")
+check_env_var("DATABASE_URL")
 
 
 @app.exception_handler(AppException)

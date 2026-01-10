@@ -60,8 +60,8 @@ async def login(body: UserLoginBody, db: DBDep):
             raise BadRequestException(detail="Email or password is incorrect")
 
         matches = ph.verify(user.password_hash, body.password)
-        if matches:
-            return {"access_token": "access_token", "refresh_token": "refresh_token"}
+        if not matches:
+            raise BadRequestException(detail="Email or password is incorrect")
 
     except (VerifyMismatchError, VerificationError, InvalidHashError) as exc:
         raise BadRequestException(detail="Email or password is incorrect")
