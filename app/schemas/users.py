@@ -27,3 +27,7 @@ class UserLoginBody(BaseModel):
 class UserLoginResponse(BaseModel):
     refresh_token: str
     access_token: str
+
+
+class RefreshBody(BaseModel):
+    refresh_token: str

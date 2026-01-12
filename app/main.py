@@ -36,6 +36,6 @@ app.include_router(urls.router)
 app.include_router(users.router)
 
 
-@app.get("/")
-async def root():
-    return {"message": "running"}
+# @app.get("/")
+# async def root():
+#     return {"message": "running"}

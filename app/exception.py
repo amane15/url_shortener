@@ -41,3 +41,8 @@ class NotFoundResponse(AppException):
 class InternalServerError(AppException):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     detail = "Internal server error"
+
+
+class ForbiddenException(AppException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = "Forbidden"

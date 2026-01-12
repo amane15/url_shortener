@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from dotenv import load_dotenv
 from alembic import context
 
-from app.models import Base, User, URL
+from app.models import Base, User, URL, RefreshToken
 
 load_dotenv()
 
