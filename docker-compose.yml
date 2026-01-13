@@ -9,6 +9,19 @@ services:
       - "5432:5432"
     volumes:
       - url_shortner_postgres_data:/var/lib/postgresql/data
+  counter:
+    image: redis:8.4-alpine
+    container_name: counter_db
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --save 60 1
+    volumes:
+      - redis_data:/data
 
 volumes:
   url_shortner_postgres_data:
+  redis_data:

@@ -33,7 +33,6 @@ def parse_expires_in(value: str) -> datetime:
 
 class CreateUrlBody(BaseModel):
     url: str
-    seq: int
     expires_at: datetime
 
     @model_validator(mode="before")

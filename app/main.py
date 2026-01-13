@@ -1,15 +1,15 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-
 from app.exception import AppException
+from app.internal.redis import create_counter_redis
 from .routers import urls, users
 from dotenv import load_dotenv
-
-import os
+from app.internal.range_counter import RangeCounter
+from app.config import COUNTER_KEY, COUNTER_RANGE_SIZE
 
 load_dotenv()
-
-app = FastAPI()
 
 
 def check_env_var(env):
@@ -25,6 +25,23 @@ def check_env_var(env):
 check_env_var("JWT_ACCESS_SECRET")
 check_env_var("JWT_REFRESH_SECRET")
 check_env_var("DATABASE_URL")
+check_env_var("COUNTER_RANGE_SIZE")
+check_env_var("COUNTER_KEY")
+check_env_var("REDIS_URL")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis = create_counter_redis()
+    counter = RangeCounter(redis, COUNTER_KEY, COUNTER_RANGE_SIZE)
+
+    app.state.redis = redis
+    app.state.counter = counter
+    yield
+    await app.state.redis.close()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.exception_handler(AppException)

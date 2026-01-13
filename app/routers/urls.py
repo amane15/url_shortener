@@ -3,17 +3,16 @@ from fastapi import APIRouter, Path, status
 from fastapi.exceptions import HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
+from app.internal.range_counter import RangeCounter
 from app.internal.base62 import base62_encode
 from app.internal.feistel import feistel_encrypt
 from app.internal.url import validate_and_cannonicalize_url
 from app.models.url import URL
-from app.dependencies import DBDep
+from app.dependencies import CounterDep, DBDep
 from app.schemas.urls import CreateUrlBody
+from app.config import COUNTER_KEY, COUNTER_RANGE_SIZE, FEISTEL_SECRET, HOST
 
 router = APIRouter(prefix="/urls")
-
-SECRET = b"secret"
-HOST = "http://localhost:8000"
 
 
 @router.get("/{short_code}")
@@ -34,10 +33,13 @@ async def redirect_to_original_url(
 
 
 @router.post("/")
-async def generate_short_url(body: CreateUrlBody, db: DBDep):
+async def generate_short_url(body: CreateUrlBody, db: DBDep, counter: CounterDep):
     try:
         validated_url = validate_and_cannonicalize_url(body.url)
-        short_code = base62_encode(feistel_encrypt(body.seq, SECRET))
+
+        url_id = await counter.next()
+
+        short_code = base62_encode(feistel_encrypt(url_id, FEISTEL_SECRET))
 
         url = URL(
             short_code=short_code,
