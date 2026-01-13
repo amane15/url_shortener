@@ -1,7 +1,6 @@
 import asyncio
-from redis.asyncio import Redis
-
-from app.exception import InternalServerError
+from redis.asyncio import Redis, ConnectionError, TimeoutError
+from app.exception import InternalServerError, CounterUnavailable
 
 
 class RangeCounter:
@@ -29,7 +28,9 @@ class RangeCounter:
             end = await self._redis.incrby(self._key, self._range_size)
             self._current = end - self._range_size + 1
             self._max = end
+        # Log error later
+        except (ConnectionError, TimeoutError) as exc:
+            raise CounterUnavailable()
         except Exception as exc:
             print(exc)
-            # Log error later
             raise InternalServerError()

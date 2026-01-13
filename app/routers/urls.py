@@ -3,6 +3,7 @@ from fastapi import APIRouter, Path, status
 from fastapi.exceptions import HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
+from app.exception import BadRequestException
 from app.internal.range_counter import RangeCounter
 from app.internal.base62 import base62_encode
 from app.internal.feistel import feistel_encrypt
@@ -10,7 +11,8 @@ from app.internal.url import validate_and_cannonicalize_url
 from app.models.url import URL
 from app.dependencies import CounterDep, DBDep
 from app.schemas.urls import CreateUrlBody
-from app.config import COUNTER_KEY, COUNTER_RANGE_SIZE, FEISTEL_SECRET, HOST
+from app.config import FEISTEL_SECRET, HOST
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/urls")
 
@@ -28,6 +30,9 @@ async def redirect_to_original_url(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"The short url with code {short_code} does not exist",
         )
+
+    if url.expires_at < datetime.now(timezone.utc):
+        raise BadRequestException(detail="Link is expired")
 
     return RedirectResponse(url=url.original_url, status_code=status.HTTP_302_FOUND)
 

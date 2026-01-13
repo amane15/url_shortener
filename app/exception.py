@@ -46,3 +46,8 @@ class InternalServerError(AppException):
 class ForbiddenException(AppException):
     status_code = status.HTTP_403_FORBIDDEN
     detail = "Forbidden"
+
+
+class CounterUnavailable(AppException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    detail = "Service Unavailable"
