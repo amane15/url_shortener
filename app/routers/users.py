@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 import os
+import uuid
 import jwt
 from uuid import UUID
 from fastapi import APIRouter, status
 from sqlalchemy import select, update
 from sqlalchemy.exc import OperationalError, IntegrityError
+from app.config import JWT_REFRESH_SECRET
 from app.dependencies import DBDep
 from app.internal.tokens import (
     generate_access_token,
@@ -12,9 +14,14 @@ from app.internal.tokens import (
 )
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
-from app.exception import BadRequestException, ForbiddenException, InternalServerError
+from app.exception import (
+    BadRequestException,
+    InternalServerError,
+    UnAuthorizedException,
+)
 from app.schemas.users import (
     RegisterUserBody,
+    UserCreateResponse,
     UserLoginBody,
     UserLoginResponse,
     RefreshBody,
@@ -26,9 +33,15 @@ from argon2.exceptions import (
     InvalidHashError,
     VerificationError,
 )
+from app.internal.get_current_user import CredentialsDep, CurrentUserDep
 
 router = APIRouter(prefix="/users")
 password_hasher = PasswordHasher()
+
+
+@router.get("/me", response_model=UserCreateResponse, status_code=status.HTTP_200_OK)
+async def me(current_user: CurrentUserDep):
+    return current_user
 
 
 @router.post(
@@ -179,3 +192,40 @@ async def refresh_access(body: RefreshBody, db: DBDep):
         raise BadRequestException()
     except (VerifyMismatchError, VerificationError, InvalidHashError) as exc:
         raise BadRequestException(detail="Invalid refresh token")
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(credentials: CredentialsDep, db: DBDep):
+    scheme, token = credentials.scheme, credentials.credentials
+    if scheme.lower() != "bearer":
+        raise UnAuthorizedException(detail="Malformed authorization header")
+
+    try:
+        payload = jwt.decode(
+            token,
+            key=JWT_REFRESH_SECRET,
+            algorithms=["HS256"],
+            issuer="urlshortenerapp.in",
+            audience="urlshortenerapp.api",
+        )
+        if payload.get("scope") != "refresh":
+            raise UnAuthorizedException()
+        jti = payload.get("jti")
+        if not jti:
+            raise UnAuthorizedException(detail="Invalid refresh token")
+
+        jti = UUID(jti)
+        result = await db.execute(select(RefreshToken).where(RefreshToken.id == jti))
+        rf_token = result.scalar_one_or_none()
+
+        if not rf_token:
+            raise BadRequestException(detail="Refresh token does not exist")
+
+        await db.delete(rf_token)
+        await db.commit()
+    except jwt.ExpiredSignatureError as exc:
+        raise UnAuthorizedException(detail="Refresh token expired")
+    except jwt.InvalidTokenError as exc:
+        raise UnAuthorizedException(detail="Invalid refresh token")
+    except ValueError as exc:
+        raise UnAuthorizedException(detail="Invalid refresh token")

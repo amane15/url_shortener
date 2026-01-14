@@ -4,15 +4,15 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from app.exception import BadRequestException
-from app.internal.range_counter import RangeCounter
 from app.internal.base62 import base62_encode
 from app.internal.feistel import feistel_encrypt
 from app.internal.url import validate_and_cannonicalize_url
 from app.models.url import URL
-from app.dependencies import CounterDep, DBDep
+from app.dependencies import DBDep, CounterDep
 from app.schemas.urls import CreateUrlBody
 from app.config import FEISTEL_SECRET, HOST
 from datetime import datetime, timezone
+from app.internal.get_current_user import CurrentUserDep
 
 router = APIRouter(prefix="/urls")
 
@@ -38,7 +38,9 @@ async def redirect_to_original_url(
 
 
 @router.post("/")
-async def generate_short_url(body: CreateUrlBody, db: DBDep, counter: CounterDep):
+async def generate_short_url(
+    body: CreateUrlBody, current_user: CurrentUserDep, db: DBDep, counter: CounterDep
+):
     try:
         validated_url = validate_and_cannonicalize_url(body.url)
 
@@ -50,7 +52,7 @@ async def generate_short_url(body: CreateUrlBody, db: DBDep, counter: CounterDep
             short_code=short_code,
             original_url=validated_url,
             expires_at=body.expires_at,
-            user_id=2,
+            user_id=current_user.id,
         )
         db.add(url)
         await db.commit()

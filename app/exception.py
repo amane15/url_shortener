@@ -33,6 +33,11 @@ class BadRequestException(AppException):
     detail = "Bad request"
 
 
+class UnAuthorizedException(AppException):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    detail = "Unauthorized"
+
+
 class NotFoundResponse(AppException):
     status_code = status.HTTP_404_NOT_FOUND
     detail = "The requested resource could not be found"
