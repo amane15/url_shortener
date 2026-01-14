@@ -21,6 +21,18 @@ services:
       --save 60 1
     volumes:
       - redis_data:/data
+  cache:
+    image: redis:8.4-alpine
+    container_name: cache_db
+    restart: unless-stopped
+    ports:
+      - "6378:6379"
+    command: >
+      redis-server
+      --save ""
+      --appendonly no
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
 
 volumes:
   url_shortner_postgres_data:

@@ -3,11 +3,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from app.exception import AppException
+from app.internal import redis
+from app.internal.cache import RedisCache
 from app.internal.redis import create_counter_redis
 from .routers import urls, users
 from dotenv import load_dotenv
 from app.internal.range_counter import RangeCounter
-from app.config import COUNTER_KEY, COUNTER_RANGE_SIZE
+from app.config import (
+    COUNTER_KEY,
+    COUNTER_RANGE_SIZE,
+    REDIS_COUNTER_URL,
+    REDIS_CACHE_URL,
+)
 
 load_dotenv()
 
@@ -32,13 +39,19 @@ check_env_var("REDIS_URL")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    redis = create_counter_redis()
-    counter = RangeCounter(redis, COUNTER_KEY, COUNTER_RANGE_SIZE)
+    redis_counter = create_counter_redis(REDIS_COUNTER_URL)
+    counter = RangeCounter(redis_counter, COUNTER_KEY, COUNTER_RANGE_SIZE)
 
-    app.state.redis = redis
+    redis_cache_instance = create_counter_redis(REDIS_CACHE_URL)
+
+    app.state.redis = redis_counter
     app.state.counter = counter
+
+    app.state.redis_cache_instance = redis_cache_instance
+    app.state.redis_cache = RedisCache(redis_cache_instance)
     yield
     await app.state.redis.close()
+    await app.state.redis_cache_instance.close()
 
 
 app = FastAPI(lifespan=lifespan)

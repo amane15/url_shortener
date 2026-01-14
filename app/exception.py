@@ -56,3 +56,8 @@ class ForbiddenException(AppException):
 class CounterUnavailable(AppException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     detail = "Service Unavailable"
+
+
+class CacheUnavailable(AppException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    detail = "Service Unavailable"

@@ -8,7 +8,7 @@ from app.internal.base62 import base62_encode
 from app.internal.feistel import feistel_encrypt
 from app.internal.url import validate_and_cannonicalize_url
 from app.models.url import URL
-from app.dependencies import DBDep, CounterDep
+from app.dependencies import CacheDep, DBDep, CounterDep
 from app.schemas.urls import CreateUrlBody
 from app.config import FEISTEL_SECRET, HOST
 from datetime import datetime, timezone
@@ -21,7 +21,13 @@ router = APIRouter(prefix="/urls")
 async def redirect_to_original_url(
     short_code: Annotated[str, Path(title="The short code of the original url")],
     db: DBDep,
+    cache: CacheDep,
 ):
+
+    long_url = await cache.get(short_code)
+    if long_url:
+        return RedirectResponse(url=long_url, status_code=status.HTTP_302_FOUND)
+
     result = await db.execute(select(URL).where(URL.short_code == short_code))
     url = result.scalar_one_or_none()
 
@@ -32,14 +38,20 @@ async def redirect_to_original_url(
         )
 
     if url.expires_at < datetime.now(timezone.utc):
+        await cache.delete(short_code)
         raise BadRequestException(detail="Link is expired")
+
+    await cache.set(short_code, url.original_url, 120)
 
     return RedirectResponse(url=url.original_url, status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/")
 async def generate_short_url(
-    body: CreateUrlBody, current_user: CurrentUserDep, db: DBDep, counter: CounterDep
+    body: CreateUrlBody,
+    current_user: CurrentUserDep,
+    db: DBDep,
+    counter: CounterDep,
 ):
     try:
         validated_url = validate_and_cannonicalize_url(body.url)
